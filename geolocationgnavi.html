@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Map:Geolocation</title>
+<style>html,body{height:100%;}body{padding:0;margin:0;}h1{padding:0;margin:0;font-size:50%;}</style>
+<!-- JQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<!-- JQuery -->
+
+
+<!--** 以下Firebase **-->
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/8.1.2/firebase.js"></script>
+
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyCW-czkKIvBHPX15rNZpSUjjF28OGMIsls",
+    authDomain: "unit1-33de2.firebaseapp.com",
+    projectId: "unit1-33de2",
+    storageBucket: "unit1-33de2.appspot.com",
+    messagingSenderId: "376680620000",
+    appId: "1:376680620000:web:560df7d8d35b70a71fd585"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const ref = firebase.database().ref();
+  //ref('/useritem/')の中にデレク鳥構造を書くとデータ保存される
+  </script>
+</head>
+<body>
+
+
+<!-- MAP[START] -->
+<h1>Map:Geolocation</h1>
+<!--ぐるなび-->
+<div>
+    アクセスキーを入力<input id="key" value="9c752296a8f7e2e21ecd3b3f79e6d7f9" type="text" size="45">
+    <input type="button" id="btn" value="送信"><br>
+    緯度lat: <input type="text" id="lat" value="">
+    経度lon: <input type="text" id="lon" value="">
+</div>
+<table id="table">
+    <tr>
+        <th>店舗名</th>
+        <th>営業時間</th>
+    </tr>
+</table>
+<div id="myMap" style='width:60%;height:70%;float:left;'></div>
+<!-- MAP[END] -->
+<input type="button" id="clr" value="クリア">
+<div id="output" class="line__contents scroll"></div>
+<!--gurunavi p1-->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=AqXLVsmb2hnVsvm0Xe_mlYqUnIWgXR5qsACHwf1zqvjoN1luDOWKopYzdZ_h7M-3 ' async defer></script>
+<script src="../js/BmapQuery.js"></script>
+<script>
+//****************************************************************************************
+// BingMaps&BmapQuery
+//****************************************************************************************
+//Init
+function GetMap(){
+    //------------------------------------------------------------------------
+    //1. Instance
+    //------------------------------------------------------------------------
+    const map = new Bmap("#myMap");
+
+    //------------------------------------------------------------------------
+    //2. geolocation: Display Map
+    //   map.geolocation(function(data:object){...});
+    //------------------------------------------------------------------------
+    map.geolocation(function(data) {
+        //location
+        const lat = data.coords.latitude;
+        const lon = data.coords.longitude;
+        //Map
+        map.startMap(43.06112080428044, 141.35636681481932, "load", 15);
+        //pin
+        map.pin(lat,lon,"#ff0000");
+
+            map.onGeocode("click", function(data){
+            console.log(data);                   //Get Geocode ObjectData
+            const lat = data.location.latitude;  //Get latitude
+            const lon = data.location.longitude; //Get longitude
+            
+            $("#lat").val(lat);
+            $("#lon").val(lon);
+            let pin = map.pinIcon(lat, lon, "kuma.png", 0.3, 0, 0);
+//*****************************************************
+            // Click Event
+            // ぐるなびAPIへデータRequest → APIサーバーからresponseデータ取得
+            //*****************************************************
+            $("#btn").on("click", function() {
+                //送信データをObject変数で用意
+                //参考URL:https://api.gnavi.co.jp/api/manual/restsearch/
+                const data = {
+                    keyid:$("#key").val(),
+                    latitude:$("#lat").val(),
+                    longitude:$("#lon").val(),
+                    range:3
+                };
+                //Ajax（非同期通信）
+                axios.get('https://api.gnavi.co.jp/RestSearchAPI/v3/', {
+                    params:data
+                })
+                    .then(function (response) {
+                    //データ受信成功！！showData関数にデータを渡す
+                    showData(response.data);
+                }).catch(function (error) {
+                    console.log(error);//通信Error
+                }).then(function () {
+                    //console.log("Last");//通信OK/Error後に処理を必ずさせたい場合
+                });
+            });
+
+            //*****************************************************
+            //ぐるなびデータ表示処理
+            //*****************************************************
+            function showData(data){
+                //データ確認用
+                console.log(data.rest);
+
+                //データを繰り返し処理で取得
+                const len  = data.rest.length; //データ数を取得
+                for( let i=0; i<len; i++){
+                    
+                    map.getGeocode(data.rest[i].address, function(){
+                console.log(data);          //Get Geocode ObjectData
+                
+                map.pinIcon(data.rest[i].latitude,data.rest[i].longitude , "", 0.1, 0, 0);
+                map.onInfobox(data.rest[i].latitude,data.rest[i].longitude , data.rest[i].name,data.rest[i].opentime);
+                // map.pinIcon.on('click',function() {
+                // map.onInfobox.hide().fadeIn();
+                // })
+                // map.onInfobox.on('dbclick',function() {
+                // map.onInfobox.fadeOut();
+
+
+                // });
+                });
+                    
+                    $("#table").append('<tr><td>' + data.rest[i].name + '</td><td>' + data.rest[i].opentime + '</td></tr>');
+                    
+                };
+            
+
+
+
+
+
+
+}
+
+
+                //----------------------------------------------------
+    //3. Add Infobox-Actions(Event)
+    //onInfobox(lat, lon, "title","description", "text or html");
+
+    //----------------------------------------------------
+    //Configuration
+    // const title = '<input type="text" id="uname">';
+    // const descript = '<textarea rows="3" id="text" value="">';
+    // const send    ='<input type="button" id="send" value"送信">';
+    // const actions =
+        
+    //Create Event to Infobox
+    // map.onInfobox(lat,lon, title, descript,actions);
+        });
+    });
+
+}
+ref.on("child_added",function(data){ //引数でオブジェクトデータを受けとる
+     const v=data.val();//.valを使いdataオブジェクトの中のdata変数を取得
+     const k=data.kye; //Uniqekye:データベース参照（削除に必要らしい）
+     const h='<p>'+v.uname+'<br>'+v.text+'<br>'+v.date2+'</p>';//html文字作成
+     $("#output").append(h);//#outputに差し込む
+     
+     
+     
+     
+
+});
+$("#clr").on('click',function(){
+        alert("delete pushpin!");
+        map.deletePin(); // ** delete pushpin **
+});
+
+</script>
+</body>
+</html>
